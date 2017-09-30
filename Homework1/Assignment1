@@ -1,1 +1,442 @@
+Name: Jay R Torasakar
+SBU ID: 111406252
+
+Network Security Assignment 1 
+
+
+1.1 How many packets does the trace contain?
+
+Answer: 32664
+        Command used :- sudo tcpdump -n -r hw1.pcap | wc -l
+
+
+1.2 How many ARP packets and how many UDP packets?
+Answer: 
+     ARP Packets: 11304 
+        sudo tcpdump -n -r hw1.pcap arp | wc -l                       
+     UDP Packets: 18382 
+        sudo tcpdump -n -r hw1.pcap udp | wc -l                                  
+ 
+
+1.3 How many packets were exchanged between 192.168.0.200 and 91.189.90.40?
+Answer: 28 packets
+    sudo tcpdump -n "(ip src 192.168.0.200 and ip dst 91.189.90.40) or (ip src 91.189.90.40 and ip dst host 192.168.0.200)" -r hw1.pcap | wc -l
+
+
+1.4 Print the unique source IP addresses found in the trace. 
+Answer: 
+
+sudo tcpdump -n -r hw1.pcap ip | awk '{print $3}' | tr . ' '|awk '{print $1"."$2"."$3"."$4}' | sort -n | uniq
+
+0.0.0.0
+1.234.31.20
+46.51.197.88
+46.51.197.89
+62.252.170.81
+62.252.170.91
+87.230.23.162
+87.98.246.8
+91.189.88.33
+91.189.89.88
+91.189.90.40
+91.189.90.41
+91.189.91.14
+91.189.91.15
+91.189.92.190
+92.240.68.152
+122.154.101.54
+130.75.16.5
+159.148.96.184
+169.254.56.55
+192.168.0.1
+192.168.0.10
+192.168.0.11
+192.168.0.12
+192.168.0.2
+192.168.0.200
+192.168.0.3
+192.168.0.5
+192.168.0.6
+192.168.0.7
+194.168.4.100
+216.137.63.121
+216.137.63.137
+
+
+
+1.5 Print the unique private network (according to RFC1918) source IP
+    addresses found in the trace. 
+Answer: 
+
+sudo tcpdump -n -r hw1.pcap ip | awk '{print $3}' | tr . ' '|awk '{if((($1==10) && ($2>=0 && $2<=255) && ($3>=0 && $3<=255)&& ($4>=0 && $4<=255) ) ||(($1==172) && ($2>=16 && $2<=31) && ($3>=0 && $3<=255)&& ($4>=0 && $4<=255) ) ||(($1==192) && ($2>=168) && ($3>=0 && $3<=255)&& ($4>=0 && $4<=255))){  print $1"."$2"."$3"."$4}}' | sort -n | uniq
+
+192.168.0.1
+192.168.0.10
+192.168.0.11
+192.168.0.12
+192.168.0.2
+192.168.0.200
+192.168.0.3
+192.168.0.5
+192.168.0.6
+192.168.0.7
+
+
+
+
+1.6 Print the unique destination IP addresses found in the trace. 
+Answer: 
+sudo tcpdump -n -r hw1.pcap ip | awk '{print $5}' | tr . ' '|awk '{print $1"."$2"."$3"."$4}' | sort -n | uniq
+
+1.234.31.20
+46.51.197.88
+46.51.197.89
+62.252.170.81
+62.252.170.91
+87.230.23.162
+87.98.246.8
+91.189.88.33
+91.189.89.88
+91.189.90.40
+91.189.90.41
+91.189.91.14
+91.189.91.15
+91.189.92.190
+92.240.68.152
+122.154.101.54
+130.75.16.5
+159.148.96.184
+169.254.255.255
+192.168.0.12
+192.168.0.200
+192.168.0.200
+192.168.0.255
+194.168.4.100
+216.137.63.121
+216.137.63.137
+224.0.0.22
+224.0.0.251
+224.0.0.251
+224.0.0.252
+224.0.0.253
+239.255.255.250
+255.255.255.255
+
+1.7 What are the top-5 TCP and top-5 UDP destination ports?
+Answer: 
+
+For TCP:
+sudo tcpdump -n -r hw1.pcap tcp | awk '{print $5}'| tr . ' ' | awk '{print $1" "$2" "$3" "$4" "$5 }' | tr : ' ' | awk '{print $5}' | sort | uniq -c | sort -n -r | head -5 | awk '{print "Occurences: "$1 "           Port Number:" $2}'
+
+Occurences: 727           Port Number:80
+Occurences: 697           Port Number:54634
+Occurences: 346           Port Number:49836
+Occurences: 61           Port Number:47110
+Occurences: 36           Port Number:40341
+ 
+For udp:
+sudo tcpdump -n -r hw1.pcap udp | awk '{print $5}'| tr . ' ' | awk '{print $1" "$2" "$3" "$4" "$5 }' | tr : ' ' | awk '{print $5}' | sort | uniq -c | sort -n -r | head -5 | awk '{print "Occurences: "$1 "            Port Number:" $2}'
+
+Occurences: 13178            Port Number:1900
+Occurences: 1925            Port Number:137
+Occurences: 1516            Port Number:5355
+Occurences: 840            Port Number:5353
+Occurences: 399            Port Number:138
+
+
+
+1.8 How many TCP packets have the SYN flag set?
+Answer: 75.
+         Command: sudo tcpdump -n 'tcp[13] & 2!=0 ' -r hw1.pcap | wc -l
+
+Also we can use the following command too
+sudo tcpdump -n 'tcp[tcpflags] & tcp-syn != 0' -r hw1.pcap | wc -l
+
+1.9 How many TCP connection attempts were made?
+Answer: 37
+          Command:  sudo tcpdump -n -t -r hw1.pcap 'tcp[13] == 2' | wc -l
+
+
+
+
+1.10 Towards which ports were TCP connection attempts made? How many attempts
+    per port?
+Answer: 
+sudo tcpdump -n -t -r hw1.pcap 'tcp[13] == 2' | awk '{print $4}' | tr : ' ' | tr . ' ' | awk '{print $5}' | sort -n | uniq -c
+"Attempts" "Port"
+       33  80
+        1  443
+        1  465
+        2  9100
+
+1.11 How many HTTP GET requests were made? Print the URLs of all HTTP requests
+    for JPG files.
+Answer: 
+i)For HTTP get request: 302 Requests
+  Command: sudo tcpdump -A -n -t -r hw1.pcap dst port 80 | grep "GET"| wc -l
+
+
+ii)For the URL: 
+  Command: sudo  tcpdump -A -n -t -r hw1.pcap dst port 80 | grep "GET" | grep -E "JPG|jpg" | awk '{print $2}'
+
+92.240.68.152.9485
+http://pic.leech.it/i/f166c/479246b0asttas.jpg
+192.168.0.200.40341
+/i/f166c/479246b0asttas.jpg
+92.240.68.152.17260
+http://ecx.images-amazon.com/images/I/41oZ1XsiOAL._SL500_AA300_.jpg
+92.240.68.152.22272
+http://www.nature.com/news/2009/090527/images/459492a-i1.0.jpg
+192.168.0.200.42990
+/news/2009/090527/images/459492a-i1.0.jpg
+
+
+1.12 When (date and time) was the first and last packet of the trace sent?
+Answer: sudo tcpdump -n -tttt -r hw1.pcap | head -1|awk '{print "Date of first packet: "$1" " $2}'
+            Date of first packet: 2013-01-12 16:37:42.871346
+
+        sudo tcpdump -n -tttt -r hw1.pcap | tail -1|awk '{print "Date of last packet: "$1" " $2}'
+            Date of last packet: 2013-01-14 18:27:03.691498
+
+1.13 What is the brand of the device that sent most of the packets? What is its
+    IP address?
+Answer: 
+For MAC Address: sudo tcpdump -e -t -n -r hw1.pcap | awk '{print $1}' | sort | uniq -c | sort -n -r | awk '{print $2}' | head -n 1
+reading from file hw1.pcap, link-type EN10MB (Ethernet)
+c4:3d:c7:17:6f:9b
+
+Device: Netgear
+Using the link:  https://aruljohn.com/mac/C43DC7176F9B
+
+for the IP address: sudo tcpdump -e -t -n -r hw1.pcap | grep "c4:3d:c7:17:6f:9b" | grep -v "ARP" | head -n 1 | awk '{print $9}'|tr . ' '|awk '{print $1"."$2"."$3"."$4}'
+Ans: 192.168.0.1
+
+
+
+1.14 Report the distribution of Ethernet packet sizes (how many packets of size
+    X exist in the trace, for all values of X in the trace).
+Answer: 
+
+Command: sudo tcpdump -e -t -n -r hw1.pcap | tr : ' ' | grep -E " LENGTH | length" | awk -F "length" '{print $2}' | awk '{print $1}' | sort | uniq -c | sort -n -r | awk '{print "packet  size X=  "$2" count of packet : "$1}'
+reading from file hw1.pcap, link-type EN10MB (Ethernet)
+
+
+packet  size X= 60 count of packet : 12190
+packet  size X= 331 count of packet : 2773
+packet  size X= 395 count of packet : 2759
+packet  size X= 405 count of packet : 2758
+packet  size X= 340 count of packet : 2749
+packet  size X= 92 count of packet : 1740
+packet  size X= 66 count of packet : 1046
+packet  size X= 1514 count of packet : 1034
+packet  size X= 64 count of packet : 887
+packet  size X= 91 count of packet : 341
+packet  size X= 342 count of packet : 326
+packet  size X= 243 count of packet : 279
+packet  size X= 63 count of packet : 232
+packet  size X= 110 count of packet : 180
+packet  size X= 484 count of packet : 165
+packet  size X= 475 count of packet : 164
+packet  size X= 539 count of packet : 162
+packet  size X= 555 count of packet : 161
+packet  size X= 527 count of packet : 158
+packet  size X= 541 count of packet : 155
+packet  size X= 175 count of packet : 146
+packet  size X= 120 count of packet : 121
+packet  size X= 386 count of packet : 88
+packet  size X= 338 count of packet : 88
+packet  size X= 74 count of packet : 87
+packet  size X= 392 count of packet : 87
+packet  size X= 390 count of packet : 87
+packet  size X= 394 count of packet : 86
+packet  size X= 362 count of packet : 86
+packet  size X= 318 count of packet : 86
+packet  size X= 398 count of packet : 85
+packet  size X= 326 count of packet : 85
+packet  size X= 167 count of packet : 62
+packet  size X= 165 count of packet : 60
+packet  size X= 249 count of packet : 56
+packet  size X= 81 count of packet : 54
+packet  size X= 82 count of packet : 52
+packet  size X= 84 count of packet : 43
+packet  size X= 1033 count of packet : 40
+packet  size X= 219 count of packet : 39
+packet  size X= 231 count of packet : 36
+packet  size X= 460 count of packet : 33
+packet  size X= 602 count of packet : 32
+packet  size X= 119 count of packet : 28
+packet  size X= 42 count of packet : 24
+packet  size X= 315 count of packet : 24
+packet  size X= 698 count of packet : 22
+packet  size X= 246 count of packet : 22
+packet  size X= 551 count of packet : 17
+packet  size X= 202 count of packet : 17
+packet  size X= 245 count of packet : 16
+packet  size X= 302 count of packet : 15
+packet  size X= 127 count of packet : 15
+packet  size X= 87 count of packet : 14
+packet  size X= 90 count of packet : 13
+packet  size X= 62 count of packet : 13
+packet  size X= 489 count of packet : 13
+packet  size X= 666 count of packet : 12
+packet  size X= 307 count of packet : 12
+packet  size X= 168 count of packet : 12
+packet  size X= 142 count of packet : 11
+packet  size X= 556 count of packet : 10
+packet  size X= 542 count of packet : 10
+packet  size X= 540 count of packet : 10
+packet  size X= 528 count of packet : 10
+packet  size X= 485 count of packet : 10
+packet  size X= 476 count of packet : 10
+packet  size X= 332 count of packet : 10
+packet  size X= 330 count of packet : 10
+packet  size X= 154 count of packet : 10
+packet  size X= 107 count of packet : 10
+packet  size X= 284 count of packet : 9
+packet  size X= 248 count of packet : 9
+packet  size X= 816 count of packet : 8
+packet  size X= 75 count of packet : 8
+packet  size X= 68 count of packet : 8
+packet  size X= 328 count of packet : 7
+packet  size X= 149 count of packet : 7
+packet  size X= 125 count of packet : 7
+packet  size X= 76 count of packet : 6
+packet  size X= 69 count of packet : 6
+packet  size X= 610 count of packet : 6
+packet  size X= 350 count of packet : 6
+packet  size X= 333 count of packet : 6
+packet  size X= 282 count of packet : 6
+packet  size X= 264 count of packet : 6
+packet  size X= 1034 count of packet : 6
+packet  size X= 88 count of packet : 5
+packet  size X= 817 count of packet : 5
+packet  size X= 628 count of packet : 5
+packet  size X= 613 count of packet : 5
+packet  size X= 329 count of packet : 5
+packet  size X= 89 count of packet : 4
+packet  size X= 85 count of packet : 4
+packet  size X= 79 count of packet : 4
+packet  size X= 65 count of packet : 4
+packet  size X= 346 count of packet : 4
+packet  size X= 345 count of packet : 4
+packet  size X= 322 count of packet : 4
+packet  size X= 267 count of packet : 4
+packet  size X= 254 count of packet : 4
+packet  size X= 244 count of packet : 4
+packet  size X= 177 count of packet : 4
+packet  size X= 170 count of packet : 4
+packet  size X= 124 count of packet : 4
+packet  size X= 106 count of packet : 4
+packet  size X= 1035 count of packet : 4
+packet  size X= 70 count of packet : 3
+packet  size X= 497 count of packet : 3
+packet  size X= 344 count of packet : 3
+packet  size X= 298 count of packet : 3
+packet  size X= 269 count of packet : 3
+packet  size X= 247 count of packet : 3
+packet  size X= 233 count of packet : 3
+packet  size X= 95 count of packet : 2
+packet  size X= 94 count of packet : 2
+packet  size X= 93 count of packet : 2
+packet  size X= 77 count of packet : 2
+packet  size X= 704 count of packet : 2
+packet  size X= 636 count of packet : 2
+packet  size X= 630 count of packet : 2
+packet  size X= 624 count of packet : 2
+packet  size X= 621 count of packet : 2
+packet  size X= 615 count of packet : 2
+packet  size X= 614 count of packet : 2
+packet  size X= 612 count of packet : 2
+packet  size X= 611 count of packet : 2
+packet  size X= 607 count of packet : 2
+packet  size X= 598 count of packet : 2
+packet  size X= 593 count of packet : 2
+packet  size X= 590 count of packet : 2
+packet  size X= 550 count of packet : 2
+packet  size X= 546 count of packet : 2
+packet  size X= 502 count of packet : 2
+packet  size X= 478 count of packet : 2
+packet  size X= 418 count of packet : 2
+packet  size X= 383 count of packet : 2
+packet  size X= 321 count of packet : 2
+packet  size X= 310 count of packet : 2
+packet  size X= 309 count of packet : 2
+packet  size X= 305 count of packet : 2
+packet  size X= 294 count of packet : 2
+packet  size X= 288 count of packet : 2
+packet  size X= 268 count of packet : 2
+packet  size X= 266 count of packet : 2
+packet  size X= 265 count of packet : 2
+packet  size X= 261 count of packet : 2
+packet  size X= 257 count of packet : 2
+packet  size X= 255 count of packet : 2
+packet  size X= 252 count of packet : 2
+packet  size X= 236 count of packet : 2
+packet  size X= 229 count of packet : 2
+packet  size X= 220 count of packet : 2
+packet  size X= 208 count of packet : 2
+packet  size X= 184 count of packet : 2
+packet  size X= 129 count of packet : 2
+packet  size X= 1212 count of packet : 2
+packet  size X= 111 count of packet : 2
+packet  size X= 105 count of packet : 2
+packet  size X= 979 count of packet : 1
+packet  size X= 952 count of packet : 1
+packet  size X= 926 count of packet : 1
+packet  size X= 760 count of packet : 1
+packet  size X= 752 count of packet : 1
+packet  size X= 746 count of packet : 1
+packet  size X= 730 count of packet : 1
+packet  size X= 72 count of packet : 1
+packet  size X= 694 count of packet : 1
+packet  size X= 690 count of packet : 1
+packet  size X= 679 count of packet : 1
+packet  size X= 678 count of packet : 1
+packet  size X= 640 count of packet : 1
+packet  size X= 608 count of packet : 1
+packet  size X= 601 count of packet : 1
+packet  size X= 596 count of packet : 1
+packet  size X= 592 count of packet : 1
+packet  size X= 588 count of packet : 1
+packet  size X= 568 count of packet : 1
+packet  size X= 552 count of packet : 1
+packet  size X= 548 count of packet : 1
+packet  size X= 544 count of packet : 1
+packet  size X= 54 count of packet : 1
+packet  size X= 535 count of packet : 1
+packet  size X= 518 count of packet : 1
+packet  size X= 506 count of packet : 1
+packet  size X= 482 count of packet : 1
+packet  size X= 479 count of packet : 1
+packet  size X= 446 count of packet : 1
+packet  size X= 433 count of packet : 1
+packet  size X= 432 count of packet : 1
+packet  size X= 429 count of packet : 1
+packet  size X= 428 count of packet : 1
+packet  size X= 417 count of packet : 1
+packet  size X= 412 count of packet : 1
+packet  size X= 396 count of packet : 1
+packet  size X= 389 count of packet : 1
+packet  size X= 374 count of packet : 1
+packet  size X= 372 count of packet : 1
+packet  size X= 347 count of packet : 1
+packet  size X= 335 count of packet : 1
+packet  size X= 320 count of packet : 1
+packet  size X= 317 count of packet : 1
+packet  size X= 312 count of packet : 1
+packet  size X= 308 count of packet : 1
+packet  size X= 306 count of packet : 1
+packet  size X= 223 count of packet : 1
+packet  size X= 207 count of packet : 1
+packet  size X= 195 count of packet : 1
+packet  size X= 178 count of packet : 1
+packet  size X= 171 count of packet : 1
+packet  size X= 156 count of packet : 1
+packet  size X= 1469 count of packet : 1
+packet  size X= 144 count of packet : 1
+packet  size X= 1218 count of packet : 1
+packet  size X= 1179 count of packet : 1
+packet  size X= 1170 count of packet : 1
+packet  size X= 1162 count of packet : 1
+packet  size X= 1102 count of packet : 1
 
