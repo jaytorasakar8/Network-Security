@@ -9,3 +9,4 @@ References:
 6. For basic libpcap commands: http://www.powershow.com/view1/255757-ZDc1Z/Introduction_to_libpcap_powerpoint_ppt_presentation
 and this: http://www.powershow.com/view1/1a15fc-ZDc1Z/libpcap_powerpoint_ppt_presentation
 /* Del second one*/
+7. https://www.tutorialspoint.com/cprogramming/c_array_of_pointers.htm
