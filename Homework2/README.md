@@ -11,3 +11,4 @@ and this: http://www.powershow.com/view1/1a15fc-ZDc1Z/libpcap_powerpoint_ppt_pre
 /* Del second one*/
 7. https://www.tutorialspoint.com/cprogramming/c_array_of_pointers.htm
 8. http://www.tcpdump.org/pcap.html
+9. For parsing an argument: https://www.gnu.org/software/libc/manual/html_node/Example-of-Getopt.html and http://man7.org/linux/man-pages/man3/getopt.3.html
