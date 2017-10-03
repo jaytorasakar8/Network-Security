@@ -9,9 +9,49 @@
 #include <pcap.h>                /* if this gives you an error try pcap/pcap.h */
 #include <netinet/tcp.h>
 #include <netinet/ip.h>
+#include <unistd.h>
+#include <getopt.h>
 
-/**************Compile using (for sniff) gcc <filenamename.c> -lpcap -o sniff *********************************************************/
+/**************Compile using (for sniff) gcc <filename.c> -lpcap -o sniff *********************************************************/
+
+// Reference : http://www.programming-pcap.aldabaknocking.com/code/arpsniffer.c
+typedef struct arpheader { 
+    u_int16_t htype;    /* Hardware Type           */ 
+    u_int16_t ptype;    /* Protocol Type           */ 
+    u_char hlen;        /* Hardware Address Length */ 
+    u_char plen;        /* Protocol Address Length */ 
+    u_int16_t oper;     /* Operation Code          */ 
+    u_char sha[6];      /* Sender hardware address */ 
+    u_char spa[4];      /* Sender IP address       */ 
+    u_char tha[6];      /* Target hardware address */ 
+    u_char tpa[4];      /* Target IP address       */ 
+}arp_header; 
+
+// Reference : http://www.tcpdump.org/pcap.html
+typedef struct tcp_header {
+	u_short sport;	/* source port */
+	u_short dport;	/* destination port */
+	u_int	th_seq;		/* sequence number */
+	u_int	th_ack;		/* acknowledgement number */
+	u_char th_offx2;	/* data offset, rsvd */
+		#define TH_OFF(th)	(((th)->th_offx2 & 0xf0) >> 4)
+	u_char th_flags;
+		#define TH_FIN 0x01
+		#define TH_SYN 0x02
+		#define TH_RST 0x04
+		#define TH_PUSH 0x08
+		#define TH_ACK 0x10
+		#define TH_URG 0x20
+		#define TH_ECE 0x40
+		#define TH_CWR 0x80
+		#define TH_FLAGS (TH_FIN|TH_SYN|TH_RST|TH_ACK|TH_URG|TH_ECE|TH_CWR)
+	u_short th_win;		/* window */
+	u_short th_sum;		/* checksum */
+	u_short th_urp;		/* urgent pointer */
+}tcp_header;
+
 void interface_read();
+void filename_read();
 
 
 
@@ -20,14 +60,16 @@ int main(int argc, char const *argv[])
 {
 	/************** All declarations*/
 	int i=0, j=0, k=0;  //initialized for general usage, could be used in loops etc.
-	char *device = NULL;   //for capturing the name of the device
+	
 	char errorbuffer[PCAP_ERRBUF_SIZE];  //predefined value of pcap_effbuf_size=256, stored in one of the libraries 	
 	char *interface=NULL;
-	char *file= NULL;
+	char *filename= NULL;
 	char *string = NULL;
 	char *expression = NULL;
 	pcap_t *descriptor = NULL; // a handler
 	char *parameters [1000];
+	int option;
+	char sfilter[100];
 	// end of all declarations
 
 
@@ -41,26 +83,182 @@ int main(int argc, char const *argv[])
 		parameters[i] = argv[i]; //making a copy of the passed arguments.
 	}
 
-	while()
-	{
-		
-	}
+	while ((option = getopt (argc, argv, "i:r:s")) != -1)
+  {
+    switch (option)
+    {
+      case 'i':
+      			interface = optarg;
+                printf ("\nGiven interface is: %s", optarg);
+                break;
+      case 'r':
+               filename = optarg;
+                printf ("\nGiven filename is: %s", optarg);
+                break;
+      case 's':
+                string = optarg;
+                printf ("\nGiven string is: %s", optarg);
+                break;
+    }
+  }
 
-	device=pcap_lookupdev(errorbuffer); //ask the pcap to find a valid device(NIC) to sniff on
+  if(interface == NULL && filename == NULL) //No parameter was passed on for both the commands. 
+  	printf("You need to either specify a interface or a file name");
 
-	if(device == NULL)
+  
+    //Interface is null, means we need to invoke the default sniffing device 
+  	//If it is not null that means we have a device, and we will pass on that device name to our method.
+  if(interface == NULL)
+  {
+  	interface=pcap_lookupdev(errorbuffer); //ask the pcap to find a valid device(NIC) to sniff on
+
+	if(interface == NULL)
 		{
-			printf("There is no device available");
+			printf("\nThere is no device currently available.");
 			exit(1);
 		}
-	printf("The device name is: %s\n",device );	// Printing the device name
+	
+	interface_read(interface, sfilter);	///////////////////**Still need to add more parameters. *****///////////////////////
 
-	descriptor = pcap_open_live(device, 2048, 1, 512, errorbuffer);   //open the device in promisicious mode
+  }
 
+
+  ///This is for file name
+  if (filename == NULL)
+  {
+  	printf("\nPlease specify a file name. Without that we won't be able to proceed");
+  }
+  else
+  	filename_read(filename,sfilter);	///////////////////**Still need to add more parameters. *****///////////////////////
+
+
+	return 0;
 }
 
 
-void interface_read()
+
+
+void interface_read(char *interface, char *sfilter)
+{
+	pcap_t *descriptor = NULL; // a handler
+	char errorbuffer[PCAP_ERRBUF_SIZE]; 
+	bpf_u_int32 net;
+	bpf_u_int32 mask;		
+	struct bpf_program 	filter_compile;
+	
+
+	descriptor = pcap_open_live(interface, 2048, 1, 512, errorbuffer);   //open the device in promisicious mode
+	if (descriptor == NULL)
+	{
+		printf("\nFailed to open device in Mode 1: Promisicious Mode.\n Error Message: %s", errorbuffer);
+		return;
+	}
+
+///For applying the filter to the given Packet.
+	if(sfilter != NULL)
+	 {		
+		if (pcap_lookupnet(descriptor, &net, &mask, errorbuffer) == -1) 
+		{
+			printf("\n Error in getting net mask!");
+			return;
+	    }
+//Compiling the given device's incoming packets
+   		 if ((pcap_compile(descriptor, &filter_compile, sfilter, 0, net)) == -1)
+     	{
+        printf("\nCompilation failure for the given device");
+        return;
+     	}
+
+//Now we apply the filter to the given device's load. Reference: http://www.tcpdump.org/pcap.html
+   		 if ((pcap_setfilter(descriptor, &filter_compile)) == -1) 
+		{
+			printf("\nFailure in applying the specified filter. Please check everything once again.");
+			return;
+		}
+}
+
+//Calling the pcap_loop so that we can loop thru all the given packets. 
+	//////////////////////////////////////////////////////////////////////**Needs to be edited for this method **///// 
+	pcap_loop(descriptor,-1,processPacket, (u_char *)&count);
+
+
+
+/* Syntax for above method
+
+The prototype for pcap_loop() is below:
+
+	int pcap_loop(pcap_t *p, int cnt, pcap_handler callback, u_char *user)
+The first argument is our session handle. 
+Following that is an integer that tells pcap_loop() how many packets it should sniff for before returning (a negative value means it should sniff until an error occurs). 
+The third argument is the name of the callback function (just its identifier, no parentheses). 
+The last argument is useful in some applications, but many times is simply set as NULL. 
+Suppose we have arguments of our own that we wish to send to our callback function, in addition to the arguments that pcap_loop() sends. This is where we do it. 
+Obviously, you must typecast to a u_char pointer to ensure the results make it there correctly
+
+*/
+
+}
+
+void filename_read(char *filename, char *sfilter)
+{
+	pcap_t *descriptor = NULL; // a handler
+	char errorbuffer[PCAP_ERRBUF_SIZE]; 
+	struct bpf_program 	filter_compile;
+
+	descriptor =pcap_open_offline(filename, errorbuffer);
+
+	if (descriptor == NULL)
+	{
+		printf("\nFailed to open the given input file. \n Error Message: %s", errorbuffer);
+		return;
+	}
+
+	///For applying the filter to the given Packet.
+	if(sfilter != NULL)
+	 {		
+//Compiling the given device's incoming packets
+   		 if ((pcap_compile(descriptor, &filter_compile, sfilter, 0, PCAP_NETMASK_UNKNOWN)) == -1)
+     	{
+        printf("\nCompilation failure for the given device");
+        return;
+     	}
+
+//Now we apply the filter to the given device's load. Reference: http://www.tcpdump.org/pcap.html
+   		 if ((pcap_setfilter(descriptor, &filter_compile)) == -1) 
+		{
+			printf("\nFailure in applying the specified filter. Please check everything once again.");
+			return;
+		}
+}
+
+//Calling the pcap_loop so that we can loop thru all the given packets. 
+	//////////////////////////////////////////////////////////////////////**Needs to be edited for this method **///// 
+	pcap_loop(descriptor,-1,processPacket, (u_char *)&count);
+}
+
+
+/*
+For the method mentioned below
+we use this format as the prototype for our callback function:
+
+	void got_packet(u_char *args, const struct pcap_pkthdr *header,
+	    const u_char *packet);
+Let's examine this in more detail. First, you'll notice that the function has a void return type. This is logical, because pcap_loop() wouldn't know how to handle a return value anyway. The first argument corresponds to the last argument of pcap_loop(). Whatever value is passed as the last argument to pcap_loop() is passed to the first argument of our callback function every time the function is called. The second argument is the pcap header, which contains information about when the packet was sniffed, how large it is, etc. The pcap_pkthdr structure is defined in pcap.h as:
+
+	struct pcap_pkthdr {
+		struct timeval ts; // time stamp 
+		bpf_u_int32 caplen; // length of portion present 
+		bpf_u_int32 len; // length this packet (off wire) 
+	};
+These values should be fairly self explanatory. 
+The last argument is the most interesting of them all, and the most confusing to the average novice pcap programmer. 
+It is another pointer to a u_char, and it points to the first byte of a chunk of data containing the entire packet, as sniffed by pcap_loop().
+
+*/
+
+void processPacket(u_char *argument, const struct pcap_pkthdr *pkthdr, const u_char *packet)
 {
 	
+	
+
 }
