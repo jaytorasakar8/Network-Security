@@ -11,11 +11,13 @@
 #include <netinet/ip.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <time.h>
+#include <netinet/ip_icmp.h>
 
 /**************Compile using (for sniff) gcc <filename.c> -lpcap -o sniff *********************************************************/
 
 // Reference : http://www.programming-pcap.aldabaknocking.com/code/arpsniffer.c
-typedef struct arpheader { 
+typedef struct arp_header { 
     u_int16_t htype;    /* Hardware Type           */ 
     u_int16_t ptype;    /* Protocol Type           */ 
     u_char hlen;        /* Hardware Address Length */ 
@@ -50,10 +52,41 @@ typedef struct tcp_header {
 	u_short th_urp;		/* urgent pointer */
 }tcp_header;
 
+//IP address
+typedef struct ip_address{
+    u_char b1;
+    u_char b2;
+    u_char b3;
+    u_char b4;
+}ip_address;
+
+
+/* IP header. Reference: https://advancedinternettechnologies.wordpress.com/ipv4-header/ */
+typedef struct ip_header{
+    u_char  ver_ihl;        // Version (4 bits) + Internet header length (4 bits)
+    u_char  tos;            // Type of service 
+    u_int tlen;           // Total length 
+    u_int identification; // Identification
+    u_int flags_fo;       // Flags (3 bits) + Fragment offset (13 bits)
+    u_char  ttl;            // Time to live
+    u_char  proto;          // Protocol
+    u_int crc;            // Header checksum
+    ip_address  saddr;      // Source address
+    ip_address  daddr;      // Destination address
+    u_int   op_pad;         // Option + Padding
+}ip_header;
+
+// UDP header
+typedef struct udp_header
+{
+	u_int len;            // Datagram length
+    u_int srcport;          // Source port
+    u_int dstport;          // Destination port
+    u_int crc;            // Checksum
+}udp_header;
+
 void interface_read();
 void filename_read();
-
-
 
 
 int main(int argc, char const *argv[])
@@ -83,21 +116,21 @@ int main(int argc, char const *argv[])
 		parameters[i] = argv[i]; //making a copy of the passed arguments.
 	}
 
-	while ((option = getopt (argc, argv, "i:r:s")) != -1)
+	while ((option = getopt (argc, argv, "i:r:s")) != -1) //Try to actual code instead of function
   {
     switch (option)
     {
       case 'i':
       			interface = optarg;
-                printf ("\nGiven interface is: %s", optarg);
+                printf ("\nGiven interface is: %s", interface);
                 break;
       case 'r':
                filename = optarg;
-                printf ("\nGiven filename is: %s", optarg);
+                printf ("\nGiven filename is: %s", filename);
                 break;
       case 's':
                 string = optarg;
-                printf ("\nGiven string is: %s", optarg);
+                printf ("\nGiven string is: %s", string);
                 break;
     }
   }
@@ -134,8 +167,6 @@ int main(int argc, char const *argv[])
 
 	return 0;
 }
-
-
 
 
 void interface_read(char *interface, char *sfilter)
@@ -243,7 +274,11 @@ we use this format as the prototype for our callback function:
 
 	void got_packet(u_char *args, const struct pcap_pkthdr *header,
 	    const u_char *packet);
-Let's examine this in more detail. First, you'll notice that the function has a void return type. This is logical, because pcap_loop() wouldn't know how to handle a return value anyway. The first argument corresponds to the last argument of pcap_loop(). Whatever value is passed as the last argument to pcap_loop() is passed to the first argument of our callback function every time the function is called. The second argument is the pcap header, which contains information about when the packet was sniffed, how large it is, etc. The pcap_pkthdr structure is defined in pcap.h as:
+Let's examine this in more detail. First, you'll notice that the function has a void return type. 
+This is logical, because pcap_loop() wouldn't know how to handle a return value anyway. 
+The first argument corresponds to the last argument of pcap_loop(). Whatever value is passed as the last argument to pcap_loop() is passed to the first argument of our callback function every time the function is called. 
+The second argument is the pcap header, which contains information about when the packet was sniffed, how large it is, etc. 
+The pcap_pkthdr structure is defined in pcap.h as:
 
 	struct pcap_pkthdr {
 		struct timeval ts; // time stamp 
@@ -256,9 +291,119 @@ It is another pointer to a u_char, and it points to the first byte of a chunk of
 
 */
 
-void processPacket(u_char *argument, const struct pcap_pkthdr *pkthdr, const u_char *packet)
+void processPacket(u_char *argument, const struct pcap_pkthdr *pkt_header, const u_char *pkt)
 {
+
+	char *time =NULL;
+	struct ether_header *arp_hdr= (struct ether_header *)pkt;
+	struct pcap_pkthdr hdr; /* pcap.h */ 
+	u_char *addr_ptr = NULL;
+
+
+/* Start off with the Ethernet IP or ARP */
+
+//////////////////////////////////////*********Ref: http://eecs.wsu.edu/~sshaikot/docs/lbpcap/libpcap-tutorial.pdf*/
+	printf("\nThe details of packet are: \n ");
+	printf("\nPacket recieved at time:  %s\n",ctime((const time_t*)&hdr.ts.tv_sec));
+
+	if (ntohs(arp_hdr->ether_type) == ETHERTYPE_IP) 
+	{
+		printf("\nEther-type: IP (0x%04x)", ETHERTYPE_IP);
+	} 
+	else 
+		if (ntohs(arp_hdr->ether_type) == ETHERTYPE_ARP) 
+		{
+			printf("\t\tEther-type: ARP (0x%04x)\t", ETHERTYPE_ARP);
+			//printf("\tARP length = %d ", header->len - 14); //Length of ARP 14 bytes
+		} 
+		else 
+		{
+			printf("\tEther-type: Non IP(i.e. ARP) (0x%04x)\t", ntohs(arp_hdr->ether_type));  //Anything other than IP or ARP
+		}
+
+
+/* find out the source and destination Mac address. Ref: Same as above */
+/* Also same thing given in the pdf: lIsting 3: http://recursos.aldabaknocking.com/libpcapHakin9LuisMartinGarcia.pdf*/
 	
-	
+	addr_ptr = arp_hdr->ether_shost;
+	i = ETHER_ADDR_LEN;
+	printf("\nSource MAC Address: ");
+	  do 
+    {
+      	printf("%s%02x",(i == ETHER_ADDR_LEN) ? " " : ":",*addr_ptr++);
+    } while(--i>0);
+
+    addr_ptr = arp_hdr->ether_dhost;
+    i = ETHER_ADDR_LEN;
+    printf("\tDestination MAC Address: ");
+    do 
+    {
+        printf("%s%02x",(i == ETHER_ADDR_LEN) ? " " : ":",*addr_ptr++);
+    } while(--i>0);
+
+
+
+
+// IP packet 
+	p_hdr = (ip_header *)(packet + 14); //Ethernet is 14bytes long. We now move to the next layer. 
+	printf("\nSource IP Addr: %d.%d.%d.%d ", p_hdr->saddr.byte1, p_hdr->saddr.byte2, p_hdr->saddr.byte3, p_hdr->saddr.byte4);
+    printf("\nDestination IP Addr: %d.%d.%d.%d ", p_hdr->daddr.byte1, p_hdr->daddr.byte2, p_hdr->daddr.byte3, p_hdr->daddr.byte4);
+
+        // TCP/UDP packet
+    ip_header_len = (p_hdr->ver_ihl & 0xf)*4;
+
+	if(p_hdr->proto == 1)
+	{
+		icmp_hdr = (struct icmp *)(packet + 14 + ip_header_len);
+		printf("\nICMP packet ");
+		printf("\tICMP Type: %d ", icmp_hdr->icmp_type);
+		printf("\tICMP code: %d ", icmp_hdr->icmp_code);
+                printf("\tICMP length = %d ", header->len);
+		
+                printf("\nICMP PAYLOAD:");
+                printf("\n-----------------------\n");
+		print_payload(packet + 14 + ip_header_len, header->len - (14 + ip_header_len));
+	}
+	else 
+		if(p_hdr->proto == 6)
+		{
+		tcp = (struct tcp_header *)(packet + 14 + ip_header_len);
+		printf("\nTCP packet ");
+		printf("\tSource Port: %d ", ntohs(tcp->sport));
+		printf("\tDestn Port: %d", ntohs(tcp->dport));
+		printf("\tTCP Length = %lu", (size_t)header->len - (14 + ip_header_len + TH_OFF(tcp)));
+
+                printf("\n=============");
+                printf("\nTCP PAYLOAD:");
+                printf("\n=============\n");
+		print_payload(packet + 14 + ip_header_len + TH_OFF(tcp), header->len - (14 + ip_header_len + TH_OFF(tcp)));
+		}
+
+		 else 
+		 	if (p_hdr->proto == 17)
+		 	 {
+				udp = (struct udp_header *)(packet + 14 + ip_header_len);
+				printf("\nUDP packet ");
+                printf("\tSource Port: %d ", ntohs(udp->sport));
+                printf("\tDestn Port: %d", ntohs(udp->dport));
+				printf("\tUDP Length = %lu", (size_t)header->len - (14 + ip_header_len + 8));
+
+				printf("\n============");
+				printf("\nUDP PAYLOAD:");
+				printf("\n============\n");
+				print_payload(packet + 14 + ip_header_len + 8, header->len - (14 + ip_header_len + 8));
+			} 
+			else 
+			{
+				printf("\nOTHER packet\n");
+				print_payload(packet + 14 + ip_header_len,  header->len - 14 - ip_header_len);
+			}	
+
+		printf("\n=======================================================================\n");
+
+
+
+
+
 
 }
