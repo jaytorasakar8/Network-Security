@@ -481,6 +481,7 @@ void *write2( void *ptr )
 		printf("\nHere is the encrypted message received from pbproxy_client: %s\n",buffer);
 		decrypt_function(buffer,str,(unsigned const char*)keyfile, iv);
 		printf("Here is the decrypted message: %s\n",str);
+		
 		//printf("Sent the decrypted message to the server\n");
 		//send this message(str) to the server and receive server's response here into buffer
 		n = write(sockfd, str, strlen(buffer));
@@ -496,3 +497,72 @@ void *write2( void *ptr )
 	free(str);
 }
 
+int main(int argc, char *argv[]) {
+	char *keyfile = NULL;
+	char *port = NULL;
+	char *dest = NULL;
+	char *d_port = NULL;
+	int ser_mode=0;
+	int has_key = 0;
+	char c;
+	int index;
+	while ((c = getopt (argc, argv, "k:l:")) != -1)
+	{
+		switch (c)
+		{
+			case 'l':
+				ser_mode = 1;//server mode on
+				port = optarg;
+				break;
+			
+			case 'k':
+				keyfile = optarg;
+				has_key =1;
+				break;
+			
+			/* case '?':
+				if (optopt == 'k')
+					fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+				else if (optopt == 'l')
+					fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+				else if (isprint (optopt))
+					fprintf (stderr, "Unknown option `-%c'.\n", optopt);
+				return 1;
+			*/
+			default:
+			
+				return(0);
+				break;
+		}
+	}
+	int count =0;
+	for (index = optind; index < argc; index++)
+	{
+		count++;
+	}
+	if(count>0)
+	{
+		dest = argv[optind];
+	}
+	if(count == 2)
+	{
+		d_port = argv[optind+1];
+	}
+	if(0 == has_key)
+	{
+		char* str = "1234567812345678";
+		if(ser_mode) //server mode on
+			server_mode(port,dest,d_port,str);
+		else	//client mode on
+			client_mode(dest,d_port,str);
+	}
+	else if(1 == has_key)
+	{
+		if(ser_mode) //server mode on
+			server_mode(port,dest,d_port,keyfile);
+		else	//client mode on
+			client_mode(dest,d_port,keyfile);
+		
+	}
+	return 0;
+}
